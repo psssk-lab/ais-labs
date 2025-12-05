@@ -1,0 +1,280 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {
+            "amount_threshold": {
+                "type": "String"
+            },
+            "mail_to": {
+                "type": "String"
+            },
+            "subject": {
+                "type": "String"
+            }
+        },
+        "triggers": {
+            "When_an_HTTP_request_is_received": {
+                "type": "Request",
+                "kind": "Http"
+            }
+        },
+        "actions": {
+            "Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": {
+                        "AgentMessage": "@{outputs('Invoice_Document_Scrapping_Agent')?['lastAssistantMessage']}"
+                    }
+                },
+                "runAfter": {
+                    "Invoice_Document_Scrapping_Agent": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_Variables": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "htmlBody",
+                            "type": "string"
+                        },
+                        {
+                            "name": "docArray",
+                            "type": "array"
+                        },
+                        {
+                            "name": "invoiceObject",
+                            "type": "object"
+                        }
+                    ]
+                },
+                "runAfter": {}
+            },
+            "Invoice_Document_Scrapping_Agent": {
+                "type": "Agent",
+                "inputs": {
+                    "parameters": {
+                        "deploymentId": "gpt-4.1-agentloop",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "You are an intelligent invoice-processing agent. Your goal is to analyze invoice data and decide actions based on business rules.\n\nStrictly follow instructions and process tools in numeric order\n\nInstructions:\n1.\tCheck and process if the input payload contains \"contentType\" as \"application/pdf\". Else skip\n2.\tUse the tool \"Call Azure Document Intelligence\" to get meaning information from payload.\n3.\tUse the tool \"Get Invoice Information\" to analyze invoice details. This tool will call the Azure AI Foundry REST API for deeper understanding.\n4.\t Filter invoices where \"total\" greater than @{parameters('amount_threshold')}.\n5.\t If no invoices meet the criteria, return a clear message: \"No invoices exceed the threshold.\"\n6.\tSend email to stakeholders using the tool \"Send Email\""
+                            },
+                            {
+                                "role": "user",
+                                "content": "Here is the input payload contentType : @{triggerBody()[0]?['contentType']}"
+                            }
+                        ],
+                        "agentModelType": "AzureOpenAI",
+                        "agentModelSettings": {
+                            "agentHistoryReductionSettings": {
+                                "agentHistoryReductionType": "maximumTokenCountReduction",
+                                "maximumTokenCount": 4000
+                            },
+                            "deploymentModelProperties": {
+                                "name": "gpt-4.1",
+                                "format": "OpenAI",
+                                "version": "2025-04-14"
+                            }
+                        }
+                    },
+                    "modelConfigurations": {
+                        "model1": {
+                            "referenceName": "agent"
+                        }
+                    }
+                },
+                "tools": {
+                    "Call_Azure_Document_Intelligence": {
+                        "actions": {
+                            "Analyze_Document": {
+                                "type": "ApiConnection",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "referenceName": "formrecognizer"
+                                        }
+                                    },
+                                    "method": "post",
+                                    "body": "{\n\"base64Source\" : \"@{triggerBody()[0]?['contentBytes']}\"\n}",
+                                    "headers": {
+                                        "Content-Type": "application/json"
+                                    },
+                                    "path": "/documentModels/@{encodeURIComponent('prebuilt-document')}:analyze",
+                                    "queries": {
+                                        "api-version": "2022-08-31"
+                                    }
+                                }
+                            },
+                            "Append_to_docArray_variable": {
+                                "type": "AppendToArrayVariable",
+                                "inputs": {
+                                    "name": "docArray",
+                                    "value": "@trim(body('Analyze_Document')?['analyzeResult']?['content'])"
+                                },
+                                "runAfter": {
+                                    "Analyze_Document": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": "This tool will call Azure Document Intelligence to understand binary data"
+                    },
+                    "Send_Email": {
+                        "actions": {
+                            "Transform_JSON_to_HTML": {
+                                "type": "Liquid",
+                                "kind": "JsonToText",
+                                "inputs": {
+                                    "content": "@variables('invoiceObject')",
+                                    "map": {
+                                        "source": "LogicApp",
+                                        "name": "jsontohtml.liquid"
+                                    }
+                                }
+                            },
+                            "Send_an_email_(V2)": {
+                                "type": "ApiConnection",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "referenceName": "office365"
+                                        }
+                                    },
+                                    "method": "post",
+                                    "body": {
+                                        "To": "@agentParameters('To')",
+                                        "Subject": "@parameters('subject')",
+                                        "Body": "<p class=\"editor-paragraph\">@{trim(variables('htmlBody'))}</p>",
+                                        "Sensitivity": "e760c494-6550-44b4-8258-77c175d778b7",
+                                        "Importance": "Normal"
+                                    },
+                                    "path": "/v2/Mail"
+                                },
+                                "runAfter": {
+                                    "Set_htmlBody": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            },
+                            "Set_htmlBody": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "htmlBody",
+                                    "value": "<html>\n\n <body style=\"margin:0;font-family:Arial;\">\n<h2 style=\"color:#0078D4;margin:0 0 12px 0;\">Invoice Summary</h2>\n\t<table style=\"border-collapse:collapse;width:100%;border:1px solid #ddd;\">\n\t\t<thead>\n\t\t\t<tr style=\"background:#f2f2f2;\">\n\t\t\t\t<th style=\"padding:8px;border:1px solid #ddd;\">Company</th>\n\t\t\t\t<th style=\"padding:8px;border:1px solid #ddd;\">Invoice #</th>\n\t\t\t\t<th style=\"padding:8px;border:1px solid #ddd;\">Date</th>\n\t\t\t\t<th style=\"padding:8px;border:1px solid #ddd;\">Due Date</th>\n\t\t\t\t<th style=\"padding:8px;border:1px solid #ddd;\">Total</th>\n\t\t\t</tr>\n\t\t</thead>\n\t\t<tbody>@{body('Transform_JSON_to_HTML')}</tbody>\n\t</table>\n</body>\n\n</html>"
+                                },
+                                "runAfter": {
+                                    "Transform_JSON_to_HTML": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": "This tool will send email to stakeholders",
+                        "agentParameterSchema": {
+                            "type": "object",
+                            "properties": {
+                                "To": {
+                                    "type": "string",
+                                    "description": "shanmukha-sai-siva-krishna.prabhala@capgemini.com"
+                                },
+                                "Subject": {
+                                    "type": "string",
+                                    "description": "Summary Of Invoice Information"
+                                }
+                            },
+                            "required": [
+                                "To",
+                                "Subject"
+                            ]
+                        }
+                    },
+                    "Get_Invoice_Information": {
+                        "actions": {
+                            "Set_invoiceObject": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "invoiceObject",
+                                    "value": "@if(not(empty(json(body('POST_Foundry')?['choices'][0]?['message']?['content'])?['invoices'])),json(body('POST_Foundry')?['choices'][0]?['message']?['content']),json(concat('{\"invoices\":[', body('POST_Foundry')?['choices'][0]?['message']?['content'], ']}')))"
+                                },
+                                "runAfter": {
+                                    "POST_Foundry": [
+                                        "Succeeded"
+                                    ]
+                                }
+                            },
+                            "POST_Foundry": {
+                                "type": "Http",
+                                "inputs": {
+                                    "uri": "https://shanm-miq08ta9-swedencentral.cognitiveservices.azure.com/openai/deployments/o3-mini/chat/completions?api-version=2025-01-01-preview",
+                                    "method": "POST",
+                                    "headers": {
+                                        "Authorization": "Bearer",
+                                        "Content-Type": "application/json"
+                                    },
+                                    "body": {
+                                        "messages": [
+                                            {
+                                                "role": "system",
+                                                "content": "Act as an invoice-processing agent and returns them in JSON format. Final JSON response should have required fields (billTo,company,date,dueDate,invoiceNumber,items,notes,poNumber,shipping,shipTo,subtotal,tax,total) and always wrap the payload inside invoices array"
+                                            },
+                                            {
+                                                "role": "user",
+                                                "content": "Extract the following values from the document analysis content. Here is the content: @{variables('docArray')[0]}"
+                                            }
+                                        ],
+                                        "max_completion_tokens": 3000,
+                                        "model": "o3-mini"
+                                    }
+                                },
+                                "runtimeConfiguration": {
+                                    "contentTransfer": {
+                                        "transferMode": "Chunked"
+                                    }
+                                }
+                            }
+                        },
+                        "description": "This tool will do POST call to Azure AI Foundry"
+                    }
+                },
+                "runAfter": {
+                    "Initialize_Variables": [
+                        "SUCCEEDED"
+                    ]
+                },
+                "limit": {
+                    "count": 100
+                }
+            },
+            "Error_Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 500,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": {
+                        "Error Message": "Error occurred during invoice processing"
+                    }
+                },
+                "runAfter": {
+                    "Invoice_Document_Scrapping_Agent": [
+                        "Failed"
+                    ]
+                }
+            }
+        },
+        "outputs": {}
+    },
+    "kind": "stateful"
+}
