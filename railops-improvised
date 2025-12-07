@@ -1,0 +1,272 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "parameters": {
+            "amount_threshold": {
+                "type": "String"
+            },
+            "mail_to": {
+                "type": "String"
+            },
+            "subject": {
+                "type": "String"
+            }
+        },
+        "triggers": {
+            "When_an_HTTP_request_is_received": {
+                "type": "Request",
+                "kind": "Http"
+            }
+        },
+        "actions": {
+            "Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": {
+                        "AgentMessage": "@{outputs('Invoice_Document_Scrapping_Agent')?['lastAssistantMessage']}"
+                    }
+                },
+                "runAfter": {
+                    "Invoice_Document_Scrapping_Agent": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_Variables": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "docString",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "runAfter": {}
+            },
+            "Invoice_Document_Scrapping_Agent": {
+                "type": "Agent",
+                "inputs": {
+                    "parameters": {
+                        "deploymentId": "gpt-4.1-agentloop",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "You are an intelligent invoice-processing agent. Your goal is to analyze invoice data and decide actions based on business rules.\n\nDo not make assumptions and use different tools available to you to get required data to make decisions. Strictly follow instructions and process tools in numeric order\n\nInstructions:\n1.\tCheck and process if the input payload contains \"contentType\" as \"application/pdf\". Else skip\n2.\tUse the tool \"Call Azure Document Intelligence\" to get meaning information from payload.\n3.\tUse the tool \"Convert to JSON\" to analyze invoice details with deeper understanding and convert String to JSON.\n4.\t Escalate to Human when invoices \"total\" or \"TOTAL DUE\" greater than @{parameters('amount_threshold')}.  Only process if Human approves.\n5.\t If no invoices meet the criteria or Human rejection, return a clear message: \"No invoices exceed the threshold.\" and proceed to Step 6.\n6.\tSend email to stakeholders using tool \"Notify Stakeholders\""
+                            },
+                            {
+                                "role": "user",
+                                "content": "Here is the input payload contentType : @{triggerBody()[0]?['contentType']}"
+                            }
+                        ],
+                        "agentModelType": "AzureOpenAI",
+                        "agentModelSettings": {
+                            "agentHistoryReductionSettings": {
+                                "agentHistoryReductionType": "maximumTokenCountReduction",
+                                "maximumTokenCount": 4000
+                            },
+                            "deploymentModelProperties": {
+                                "name": "gpt-4.1",
+                                "format": "OpenAI",
+                                "version": "2025-04-14"
+                            }
+                        }
+                    },
+                    "modelConfigurations": {
+                        "model1": {
+                            "referenceName": "agent"
+                        }
+                    }
+                },
+                "tools": {
+                    "Call_Azure_Document_Intelligence": {
+                        "actions": {
+                            "Analyze_Document": {
+                                "type": "ApiConnection",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "referenceName": "formrecognizer"
+                                        }
+                                    },
+                                    "method": "post",
+                                    "body": "{\n\"base64Source\" : \"@{triggerBody()[0]?['contentBytes']}\"\n}",
+                                    "headers": {
+                                        "Content-Type": "application/json"
+                                    },
+                                    "path": "/documentModels/@{encodeURIComponent('prebuilt-document')}:analyze",
+                                    "queries": {
+                                        "api-version": "2022-08-31"
+                                    }
+                                }
+                            },
+                            "Set_docString": {
+                                "type": "SetVariable",
+                                "inputs": {
+                                    "name": "docString",
+                                    "value": "@trim(body('Analyze_Document')?['analyzeResult']?['content'])"
+                                },
+                                "runAfter": {
+                                    "Analyze_Document": [
+                                        "SUCCEEDED"
+                                    ]
+                                }
+                            }
+                        },
+                        "description": "This tool will call Azure Document Intelligence to understand binary data"
+                    },
+                    "Notify_Stakeholders": {
+                        "actions": {
+                            "Send_an_email_(V2)": {
+                                "type": "ApiConnection",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "referenceName": "office365"
+                                        }
+                                    },
+                                    "method": "post",
+                                    "body": {
+                                        "To": "@agentParameters('To')",
+                                        "Subject": "@agentParameters('Subject')",
+                                        "Body": "<p class=\"editor-paragraph\">@{agentParameters('Body')}</p>",
+                                        "Sensitivity": "e760c494-6550-44b4-8258-77c175d778b7",
+                                        "Importance": "Normal"
+                                    },
+                                    "path": "/v2/Mail"
+                                }
+                            }
+                        },
+                        "description": "This tool will send email to stakeholders. Format email in HTML",
+                        "agentParameterSchema": {
+                            "type": "object",
+                            "properties": {
+                                "To": {
+                                    "type": "string",
+                                    "description": "shanmukha-sai-siva-krishna.prabhala@capgemini.com"
+                                },
+                                "Subject": {
+                                    "type": "string",
+                                    "description": "The subject of the mail"
+                                },
+                                "Body": {
+                                    "type": "string",
+                                    "description": "The body of the mail about the invoice summary"
+                                }
+                            },
+                            "required": [
+                                "To",
+                                "Subject",
+                                "Body"
+                            ]
+                        }
+                    },
+                    "Wait_for_Human_Review": {
+                        "actions": {
+                            "Post_adaptive_card_and_wait_for_a_response": {
+                                "type": "ApiConnectionWebhook",
+                                "inputs": {
+                                    "host": {
+                                        "connection": {
+                                            "referenceName": "teams"
+                                        }
+                                    },
+                                    "body": {
+                                        "notificationUrl": "@listCallbackUrl()",
+                                        "body": {
+                                            "messageBody": "{\n    \"type\": \"AdaptiveCard\",\n    \"$schema\": \"https://adaptivecards.io/schemas/adaptive-card.json\",\n    \"version\": \"1.5\",\n    \"body\": [\n        {\n            \"type\": \"TextBlock\",\n            \"text\": \"The following item went through AI agents and needs additional review. Here is AI summary and relevant details -\",\n            \"wrap\": true,\n            \"weight\": \"Bolder\",\n            \"size\": \"Medium\"\n        },\n        {\n            \"type\": \"TextBlock\",\n            \"wrap\": true,\n            \"text\": \"@{agentParameters('Message')}\"\n        }\n    ],\n    \"actions\": [\n        {\n            \"type\": \"Action.Submit\",\n            \"title\": \"Approve\",\n            \"style\": \"positive\",\n            \"data\": {\n                \"action\": \"approve\"\n            }\n        },\n        {\n            \"type\": \"Action.Submit\",\n            \"title\": \"Reject\",\n            \"style\": \"destructive\",\n            \"data\": {\n                \"action\": \"reject\"\n            }\n        }\n    ]\n}",
+                                            "updateMessage": "@agentParameters('Update message')",
+                                            "recipient": {
+                                                "groupId": "3a8114e5-af97-4a4e-a38a-feebee4d4f83",
+                                                "channelId": "19:po9uho-e0w19penYfEmsZ4oCT9qHVI95tj19UVvobrc1@thread.tacv2"
+                                            }
+                                        }
+                                    },
+                                    "path": "/v1.0/teams/conversation/gatherinput/poster/Flow bot/location/@{encodeURIComponent('Channel')}/$subscriptions"
+                                }
+                            }
+                        },
+                        "description": "Use this tool will post request in Microsoft Teams to get approval from Human",
+                        "agentParameterSchema": {
+                            "type": "object",
+                            "properties": {
+                                "Update message": {
+                                    "type": "string",
+                                    "description": "To show as an update in the original card following response"
+                                },
+                                "Message": {
+                                    "type": "string",
+                                    "description": "Provide the invoices summary so that Human can take decision"
+                                }
+                            },
+                            "required": [
+                                "Update message",
+                                "Message"
+                            ]
+                        }
+                    },
+                    "Convert_to_JSON": {
+                        "actions": {
+                            "Compose": {
+                                "type": "Compose",
+                                "inputs": "@agentParameters('Inputs')"
+                            }
+                        },
+                        "description": "This tool will convert text to JSON. Input is given as \"InputString\" agent parameter",
+                        "agentParameterSchema": {
+                            "type": "object",
+                            "properties": {
+                                "Inputs": {
+                                    "type": "string",
+                                    "description": "Converted JSON text is stored here"
+                                },
+                                "inputString": {
+                                    "type": "string",
+                                    "description": "@{variables('docString')}"
+                                }
+                            },
+                            "required": [
+                                "Inputs",
+                                "inputString"
+                            ]
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Initialize_Variables": [
+                        "SUCCEEDED"
+                    ]
+                },
+                "limit": {
+                    "count": 100
+                }
+            },
+            "Error_Response": {
+                "type": "Response",
+                "kind": "Http",
+                "inputs": {
+                    "statusCode": 500,
+                    "headers": {
+                        "Content-Type": "application/json"
+                    },
+                    "body": {
+                        "Error Message": "Error occurred during invoice processing"
+                    }
+                },
+                "runAfter": {
+                    "Invoice_Document_Scrapping_Agent": [
+                        "Failed"
+                    ]
+                }
+            }
+        },
+        "outputs": {}
+    },
+    "kind": "stateful"
+}
