@@ -20,16 +20,10 @@ The Agent Loop operates on an iterative "Think, Act, and Learn" cycle.
 # Core Features & Capabilities:
  
 **Feature**
-Description
-Agentic Workflows
-Supports reasoning, state management, and orchestration of tasks
-Durable Execution
-Ensures reliability and fault tolerance for long-running
-  workflows
-Rich Connectivity
-Integrates with hundreds of enterprise connectors
-Security & Compliance
-Enterprise-grade security and governance features
+* **Agentic Workflows:** Supports reasoning, state management, and orchestration of tasks
+* **Durable Execution:** Ensures reliability and fault tolerance for long-running workflows
+* **Rich Connectivity:** Integrates with hundreds of enterprise connectors
+******Security & Compliance:** Enterprise-grade security and governance features
  
  
 # Agent Loop Workflow Components:
@@ -40,23 +34,18 @@ Enterprise-grade security and governance features
 
 # Common Use Cases:
 
-**Scenario**
-
-**Conversational IT Operations:** An agent interacts with IT operators via chat to diagnose and resolve incidents automatically
-**Automated Troubleshooting:** Detects system alerts, runs diagnostic workflows, and applies fixes without manual intervention
-**Incident Management:** Creates, updates, and closes ServiceNow or ITSM tickets based on user prompts and system events
-**Knowledge Base Querying:** Answers employee queries by fetching data from enterprise knowledge bases and documentation
-**Multi-Agent Orchestration:** Coordinates multiple agents for complex workflows like provisioning resources and compliance checks
-**Intelligent Document Triaging:** An agent can read, understand, and categorize incoming legal documents, extracting key information and routing them to the correct team for review
- 
+## **Conversational IT Operations:** An agent interacts with IT operators via chat to diagnose and resolve incidents automatically
+## **Automated Troubleshooting:** Detects system alerts, runs diagnostic workflows, and applies fixes without manual intervention
+## **Incident Management:** Creates, updates, and closes ServiceNow or ITSM tickets based on user prompts and system events
+## **Knowledge Base Querying:** Answers employee queries by fetching data from enterprise knowledge bases and documentation
+## **Multi-Agent Orchestration:** Coordinates multiple agents for complex workflows like provisioning resources and compliance checks
+## **Intelligent Document Triaging:** An agent can read, understand, and categorize incoming legal documents, extracting key information and routing them to the correct team for review
  
 # Conclusion:
 The Azure Logic Apps Agent Loop functionality represents a significant leap forward in intelligent automation, moving beyond simple trigger-action sequences to goal-oriented, AI-driven workflows. By integrating large language models with the robust capabilities of Azure Logic Apps' extensive connector ecosystem, organizations can now automate complex, autonomous, and conversational processes with enterprise-grade security and scalability, ultimately unlocking new levels of efficiency and operational intelligence.
- 
  
 # Learning Resources:
  
 **Official Docs & GitHub Repo:**
 https://azure.github.io/logicapps-labs/docs/category/build-agentic-workflows-with-azure-logic-apps/
-
 https://azure.github.io/logicapps-labs/docs/category/agent-in-a-day-workshop/
