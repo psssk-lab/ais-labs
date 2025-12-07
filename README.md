@@ -1,4 +1,4 @@
-# **ais-labs**
+Welcome to the AIS Agent Loop Wiki
 
 # What is Azure Logic Apps Agent Loop?
 Azure Logic Apps Agent Loop is a framework for building agentic workflows that combine reasoning, orchestration, and integration with enterprise systems. It enables autonomous and conversational agents to execute tasks using Logic Apps connectors and Azure OpenAI models. 
@@ -7,13 +7,13 @@ It is a powerful new capability that transforms traditional, static workflows i
                                              
 # Key Concepts and Functionality:
 The Agent Loop operates on an iterative "Think, Act, and Learn" cycle.
-**Think**: The AI model processes inputs, analyzes information, reasons
+* **Think**: The AI model processes inputs, analyzes information, reasons
      about the request, and formulates a plan or chooses the best action to
      take
-**Act**: The agent executes the chosen action by leveraging any of the
+* **Act**: The agent executes the chosen action by leveraging any of the
      1,400+ pre-built connectors in the Logic Apps ecosystem to interact with
      enterprise systems, APIs, or data sources
-**Learn** (Optional): The agent can adapt its behaviour
+* **Learn** (Optional): The agent can adapt its behaviour
      over time by using feedback and reflecting on the results of its actions
      to improve future outcomes
 
@@ -33,31 +33,24 @@ Enterprise-grade security and governance features
  
  
 # Agent Loop Workflow Components:
-• **System and User Instructions**: Define role, tone, and constraints for the agent
-• **Model Configuration**: Choose models like GPT-4.1 or GPT-5
-• **Tools Integration**: Connect to Salesforce, ServiceNow, operational runbooks and more
+*  **System and User Instructions**: Define role, tone, and constraints for the agent
+*  **Model Configuration**: Choose models like GPT-4.1 or GPT-5
+*  **Tools Integration**: Connect to Salesforce, ServiceNow, operational runbooks and more
 
 
 # Common Use Cases:
 
 **Scenario**
-**Example Prompt**
-Conversational IT Operations
-An agent interacts with IT operators via chat to diagnose and resolve incidents automatically
-Automated Troubleshooting
-Detects system alerts, runs diagnostic workflows, and applies fixes without manual intervention
-Incident Management
-Creates, updates, and closes ServiceNow or ITSM tickets based on user prompts and system events
-Knowledge Base Querying
-Answers employee queries by fetching data from enterprise knowledge bases and documentation
-Multi-Agent Orchestration
-Coordinates multiple agents for complex workflows like provisioning resources and compliance checks
-Intelligent Document Triaging
-An agent can read, understand, and categorize incoming legal documents, extracting key information and routing them to the correct team for review
+
+**Conversational IT Operations:** An agent interacts with IT operators via chat to diagnose and resolve incidents automatically
+**Automated Troubleshooting:** Detects system alerts, runs diagnostic workflows, and applies fixes without manual intervention
+**Incident Management:** Creates, updates, and closes ServiceNow or ITSM tickets based on user prompts and system events
+**Knowledge Base Querying:** Answers employee queries by fetching data from enterprise knowledge bases and documentation
+**Multi-Agent Orchestration:** Coordinates multiple agents for complex workflows like provisioning resources and compliance checks
+**Intelligent Document Triaging:** An agent can read, understand, and categorize incoming legal documents, extracting key information and routing them to the correct team for review
  
  
 # Conclusion:
- 
 The Azure Logic Apps Agent Loop functionality represents a significant leap forward in intelligent automation, moving beyond simple trigger-action sequences to goal-oriented, AI-driven workflows. By integrating large language models with the robust capabilities of Azure Logic Apps' extensive connector ecosystem, organizations can now automate complex, autonomous, and conversational processes with enterprise-grade security and scalability, ultimately unlocking new levels of efficiency and operational intelligence.
  
  
