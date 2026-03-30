@@ -47,5 +47,5 @@ The Azure Logic Apps Agent Loop functionality represents a significant leap fo
 # Learning Resources:
  
 **Official Docs & GitHub Repo:**
-https://azure.github.io/logicapps-labs/docs/category/build-agentic-workflows-with-azure-logic-apps/
-https://azure.github.io/logicapps-labs/docs/category/agent-in-a-day-workshop/
+[https://azure.github.io/logicapps-labs/docs/category/build-agentic-workflows-with-azure-logic-apps/
+https://azure.github.io/logicapps-labs/docs/category/agent-in-a-day-workshop/](https://azure.github.io/logicapps-labs/docs/intro)
